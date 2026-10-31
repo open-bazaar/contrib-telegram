@@ -67,14 +67,97 @@ real ContribHub with both credential configuration forms. Enable blockbuster
 in pytest and the isolated installation subprocesses. Run Ruff, format,
 Pyright and three-platform CI.
 
-## Task 2: Real Telegram acceptance
+## Task 2: Real Telegram behavior tests
 
-Use a dedicated test bot, DM and group topic with test-only configuration and
-isolated BCN data/processes. Exercise inbound messages and quoted context,
-rich replies, long messages, attachment transfers, proactive DMs, inline approval
-by the original sender, and shutdown. Observe typing in the actual client during
-Harness activity. Test observations use an Audit subscriber and client results.
-Record the actual test configuration and evidence before claiming acceptance.
+Test the Telegram Channel through a real installed node against the real Bot
+API, in the manner of OpenDAL's service behavior tests. A scripted TestHarness
+stands in for the model, so no LLM or gateway runs; the model path is covered by
+the Codex and Claude Code providers. A second bot drives the conversation from
+the Telegram side. Tests are marked `e2e`, run in their own CI job, and read
+their configuration from the environment; a missing value fails the run.
+
+- `TELEGRAM_TEST_BOT_TOKEN` (secret): the bot under test.
+- `TELEGRAM_DRIVER_BOT_TOKEN` (secret): the driver bot. Both bots enable
+  bot-to-bot communication and belong to the test group.
+- `TELEGRAM_TEST_CHAT_ID` and `TELEGRAM_TEST_TOPIC_ID` (variables): the dedicated
+  test topic, so runs never post into other groups. Direct messages only pass
+  between the two bots.
+
+The fixture package `bcn-telegram-test-harness` under `tests/fixtures/harness`
+registers `test-harness-builder` through `HarnessBuilderConfig`. Its Harness only
+sends: each turn reports itself started, runs a worker process in the agent
+workspace with the session environment, emits content deltas while it runs, and
+completes when the worker exits. The worker reads its inbox with
+`bcc message check` and, for every new message carrying the run marker, sends
+what the instruction after the marker names:
+
+- `reply`: a reply to that message, in its own target.
+- `long`: Markdown above `MAX_RICH_MARKDOWN_BYTES` with headings, lists and a
+  fenced block, to that target.
+- `attach`: a fixed workspace file as an attachment, to that target.
+- `dm`: a DM to the sender through `dm:@<username>`.
+- `quote`: the body of the message this one quotes, to that target.
+- `echo`: the message's own attachment, as materialized in the workspace, back
+  to that target.
+- `approve`: an approval request for a command, then the decision back to that
+  target as a reply; only the local approval check uses it.
+
+The package also offers `audit-journal`, which appends every Audit event to a
+file. The test reads it only for what the Bot API cannot tell it: which pending
+conversation is the test topic, from `channel.received`, and the ids of the
+messages the bot under test sent, from the `channel.outbound.sent` receipts.
+The package's configer `config-env-token` reads the node document named by
+its option once and keeps it in memory, with each Telegram channel's
+`token_env` replaced by a direct `token` holding that variable's value. Writes
+stay in memory, so the token is never written to disk.
+
+The node is prepared like the Codex and Claude Code acceptance: the published
+`bazaar-compute-node`, this repository's wheel and the fixture wheel installed
+into an isolated environment, a test-only `BCN_HOME`, a temporary workspace and a
+short sidecar endpoint. The agent runs in `dangerous_individual` mode, because
+only an Agent-scoped actor may open a DM, and only towards a sender it has heard
+from. The node first runs with `config-filesystem`, whose document gives
+Telegram `token_env`. New conversations wait for review, so the test approves
+the topic's conversation with `bcn agent review approve`; the DM the agent opens
+itself needs no review.
+
+The test script is the driver: it posts into the topic and DMs the bot under
+test through the Bot API, then reads its own `getUpdates` and checks that what
+arrived is what the instruction asked for. Every run tags its messages with a
+random marker and ignores updates without it. Once the assertions have run,
+pass or fail, each bot deletes the messages it sent in the run with
+`deleteMessages`: the driver from its own send results, the bot under test from
+the journal's receipts, so the topic and the DMs stay empty. The CI job uses one
+concurrency group, so only one run polls these bots.
+
+1. Group reply: `<marker> reply` mentioning the bot is answered in the topic by
+   a message from the bot that replies to it.
+2. Quote backfill: `<marker> quote`, sent as a reply to an earlier driver
+   message, is answered with that earlier message's text.
+3. Long rich text: `<marker> long`, a checklist above both the byte and the
+   block limit, arrives as several messages whose numbered sections, in order,
+   are the whole document.
+4. Outbound attachment: `<marker> attach` arrives as a document whose bytes
+   are the fixture file.
+5. Inbound attachment: a document captioned `<marker> echo` comes back as a
+   document with the same bytes.
+6. DM by username: `<marker> dm` in the topic arrives at the driver as a DM.
+7. Inbound DM: `<marker> reply` sent to the bot in that DM is answered there,
+   replying to it.
+8. Direct token: after a restart with `config-env-token`, `<marker> reply` in
+   the topic is answered again, replying to it.
+
+A Channel given a token Telegram rejects is also started directly with a
+10-second budget. The first rejection publishes `channel.identity.failed` with
+a `retry_in_ms` of 1000 and Telegram's 401, and startup fails once the next
+retry no longer fits.
+
+Approval is checked locally by hand rather than in CI: the card in the topic,
+approving and rejecting it with its inline buttons as the original sender, and
+stopping the node while a card is pending, which cancels the turn waiting on it
+and closes the card as rejected. Typing display is checked in the client at the
+same time; bots cannot press inline buttons and Telegram reports typing to no
+one. Record the CI run and the local approval check as acceptance evidence.
 
 ## Local validation
 
@@ -84,4 +167,11 @@ Five tests pass, including independent wheel and sdist installations that load
 direct `token` configurations compose successfully. Blockbuster is active in
 pytest and both installed-package subprocesses. Filesystem attachment preparation
 and long/rich content are exercised with real data and files.
-Real Telegram traffic and client typing remain pending dedicated test configuration.
+Both `e2e` tests pass locally against the two dedicated bots in about 100
+seconds: all eight cases, after which both bots' messages are deleted, and the
+rejected-token startup. Neither bot's token appears in any file the run leaves,
+logs and journal included.
+Locally, an approved and a rejected card each answered the original sender,
+stopping the node with a third card pending cancelled its turn and closed the
+card without buttons, ending with `Action rejected: the approval request was
+cancelled`, and typing showed in the client.
