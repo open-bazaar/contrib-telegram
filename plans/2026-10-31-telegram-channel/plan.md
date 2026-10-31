@@ -178,11 +178,31 @@ The fixture worker gains `edited`: for a message whose header carries
    `editMessageText` to `<marker> edited`, is answered in the topic by a reply
    to that message.
 
+## Task 4: Transport failures
+
+A transport failure while sending a message or a document is reported as not
+sent, so the shared sender retries it with its backoff up to its attempt limit.
+This includes a failure after the request may have reached Telegram, such as a
+dropped connection or a response cut short: a duplicate message is acceptable,
+while an unknown outcome stops the retry. Telegram's own rejections keep their
+treatment, and only those carrying `retry_after` are retried. The shared
+sender's own attempt deadline still records an unknown outcome.
+
+`TelegramTransportError` names the aiohttp or OS error and keeps its message,
+with the token replaced by `<redacted>` and cut to the length of Telegram's
+error descriptions. A connection timeout is reported as `ConnectionTimeoutError`
+rather than `TimeoutError`, and a response body that fails while being read is a
+transport failure rather than invalid JSON.
+
+A request through a proxy that refuses connections fails with
+`ClientProxyConnectionError` and that error's message.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
-Five tests pass, including independent wheel and sdist installations that load
-`telegram-builder` and register it in a real ContribHub. Both `token_env` and
+Six tests pass, including independent wheel and sdist installations that load
+`telegram-builder` and register it in a real ContribHub, and the request through
+a refusing proxy. Both `token_env` and
 direct `token` configurations compose successfully. Blockbuster is active in
 pytest and both installed-package subprocesses. Filesystem attachment preparation
 and long/rich content are exercised with real data and files.

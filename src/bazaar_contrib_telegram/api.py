@@ -37,10 +37,11 @@ class TelegramApiError(RuntimeError):
 
 
 class TelegramTransportError(RuntimeError):
-    def __init__(self, method: str, error_type: str) -> None:
+    def __init__(self, method: str, error_type: str, detail: str) -> None:
         self.method = method
         self.error_type = error_type
-        super().__init__(f"Telegram {method} transport failed: {error_type}")
+        reason = f"{error_type}: {detail}" if detail else error_type
+        super().__init__(f"Telegram {method} transport failed: {reason}")
 
 
 class TelegramBotApi:
@@ -278,12 +279,10 @@ class TelegramBotApi:
                 async for chunk in response.content.iter_chunked(_DOWNLOAD_CHUNK_BYTES):
                     if chunk:
                         yield bytes(chunk)
-        except TimeoutError:
-            raise TelegramTransportError("downloadFile", "TimeoutError") from None
-        except aiohttp.ClientError as error:
-            raise TelegramTransportError("downloadFile", type(error).__name__) from None
-        except OSError as error:
-            raise TelegramTransportError("downloadFile", type(error).__name__) from None
+        except (TimeoutError, aiohttp.ClientError, OSError) as error:
+            raise TelegramTransportError(
+                "downloadFile", type(error).__name__, self._redact(str(error))
+            ) from None
 
     async def _request(
         self,
@@ -315,19 +314,17 @@ class TelegramBotApi:
                 http_status = response.status
                 try:
                     body = await response.json(content_type=None)
-                except aiohttp.ClientError, ValueError:
+                except ValueError:
                     raise TelegramApiError(
                         method,
                         http_status=http_status,
                         error_code=None,
                         description="provider returned invalid JSON",
                     ) from None
-        except TimeoutError:
-            raise TelegramTransportError(method, "TimeoutError") from None
-        except aiohttp.ClientError as error:
-            raise TelegramTransportError(method, type(error).__name__) from None
-        except OSError as error:
-            raise TelegramTransportError(method, type(error).__name__) from None
+        except (TimeoutError, aiohttp.ClientError, OSError) as error:
+            raise TelegramTransportError(
+                method, type(error).__name__, self._redact(str(error))
+            ) from None
 
         if not isinstance(body, Mapping):
             raise TelegramApiError(
@@ -345,9 +342,7 @@ class TelegramBotApi:
         description = body.get("description")
         if not isinstance(description, str) or not description:
             description = "provider rejected request"
-        if self._token in description:
-            description = description.replace(self._token, "<redacted>")
-        description = description[:_MAX_ERROR_DESCRIPTION]
+        description = self._redact(description)
         parameters = body.get("parameters")
         retry_after: int | None = None
         if isinstance(parameters, Mapping):
@@ -365,6 +360,9 @@ class TelegramBotApi:
             description=description,
             retry_after=retry_after,
         )
+
+    def _redact(self, text: str) -> str:
+        return text.replace(self._token, "<redacted>")[:_MAX_ERROR_DESCRIPTION]
 
 
 __all__ = [

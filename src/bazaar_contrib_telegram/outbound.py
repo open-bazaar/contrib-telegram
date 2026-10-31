@@ -152,7 +152,7 @@ class TelegramOutboundChannel(TelegramApprovalChannel):
             ) from error
         except TelegramTransportError as error:
             raise ChannelConnectionError(
-                str(error), phase="send", delivery="unknown"
+                str(error), phase="send", delivery="not_sent"
             ) from error
         return self._receipt(
             message,
@@ -209,7 +209,7 @@ class TelegramOutboundChannel(TelegramApprovalChannel):
             ) from error
         except TelegramTransportError as error:
             raise ChannelConnectionError(
-                str(error), phase="send", delivery="unknown"
+                str(error), phase="send", delivery="not_sent"
             ) from error
         except (OSError, TypeError, ValueError) as error:
             raise ChannelRejectedError(
