@@ -159,6 +159,25 @@ and closes the card as rejected. Typing display is checked in the client at the
 same time; bots cannot press inline buttons and Telegram reports typing to no
 one. Record the CI run and the local approval check as acceptance evidence.
 
+## Task 3: Edited messages
+
+BCN `0.3.0rc11` stores an edit as a new inbound message that points at the
+original, marked by `InboundMessage.edit_version`. The Channel subscribes to
+`edited_message` and reads it with the same rules as `message`: its
+`edit_version` is `str(edit_date)`, and `edit_date` is its time for
+`occurred_at_ms` and the historical check. The edit keeps the original's id and
+provider message id, so a reply to it lands on the original Telegram message.
+`bazaar-contrib-channel` moves to `~=0.3.0rc11`, and the tests install
+`bazaar-compute-node>=0.3.0rc11`.
+
+The fixture worker gains `edited`: for a message whose header carries
+`edit_of=`, it reads the history around that id and, when the original holds
+`<marker> draft`, replies `<marker> edited`.
+
+9. Edited message: `<marker> draft` mentioning the bot, edited with
+   `editMessageText` to `<marker> edited`, is answered in the topic by a reply
+   to that message.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
@@ -167,10 +186,10 @@ Five tests pass, including independent wheel and sdist installations that load
 direct `token` configurations compose successfully. Blockbuster is active in
 pytest and both installed-package subprocesses. Filesystem attachment preparation
 and long/rich content are exercised with real data and files.
-Both `e2e` tests pass locally against the two dedicated bots in about 100
-seconds: all eight cases, after which both bots' messages are deleted, and the
-rejected-token startup. Neither bot's token appears in any file the run leaves,
-logs and journal included.
+Both `e2e` tests pass locally against the two dedicated bots in about 140
+seconds with BCN `0.3.0rc11`: all nine cases, after which both bots' messages
+are deleted, and the rejected-token startup. Neither bot's token appears in any
+file the run leaves, logs and journal included.
 Locally, an approved and a rejected card each answered the original sender,
 stopping the node with a third card pending cancelled its turn and closed the
 card without buttons, ending with `Action rejected: the approval request was

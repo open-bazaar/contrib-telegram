@@ -11,12 +11,14 @@ from importlib.resources import files
 from pathlib import Path
 
 COMMAND = re.compile(
-    r"\b(e2e-[0-9a-f]{12}) (reply|long|attach|dm|quote|echo|approve)\b"
+    r"\b(e2e-[0-9a-f]{12}) (reply|long|attach|dm|quote|echo|approve|edited)\b"
 )
 SENDER = r"(?:@(?P<handle>[^\s(:]+)(?:\([^)\n]*\))?: )?"
 MESSAGE = re.compile(
     r"^\[target=(?P<target>.+?) msg=(?P<id>[0-9a-f-]+) [^\]\n]*?"
-    r"(?: reply_to=(?P<reply>[0-9a-f-]+))?\] " + SENDER + r"(?P<body>.*)$",
+    r"(?: reply_to=(?P<reply>[0-9a-f-]+))?(?: edit_of=(?P<edit>[0-9a-f-]+))?\] "
+    + SENDER
+    + r"(?P<body>.*)$",
     re.MULTILINE,
 )
 REFERENCE = re.compile(
@@ -94,6 +96,25 @@ def main() -> None:
             send(bcc, target, f"{marker} {decision}", "--reply-to", message["id"])
         elif action == "quote":
             send(bcc, target, ATTACHMENTS.sub("", quoted[message["reply"]]))
+        elif action == "edited":
+            if message["edit"] is None:
+                continue
+            history = subprocess.run(
+                [
+                    bcc,
+                    "message",
+                    "read",
+                    "--target",
+                    target,
+                    "--around",
+                    message["edit"],
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+            if f"{marker} draft" in history:
+                send(bcc, target, f"{marker} edited", "--reply-to", message["id"])
         else:
             path = PATH.search(message["body"])
             if path is None:

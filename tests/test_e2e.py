@@ -175,7 +175,7 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
         "--refresh",
         "--default-index",
         "https://pypi.org/simple",
-        "bazaar-compute-node>=0.3.0rc10,<0.4",
+        "bazaar-compute-node>=0.3.0rc11,<0.4",
         "--with",
         str(provider),
         "--with",
@@ -328,6 +328,21 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
                     in_topic(message) and visible(message) == f"{marker} original"
                 )
             )
+
+            marker = "e2e-" + secrets.token_hex(6)
+            draft = await post(f"{mention} {marker} draft")
+            await driver.call(
+                "editMessageText",
+                chat_id=chat,
+                message_id=draft["message_id"],
+                text=f"{mention} {marker} edited",
+            )
+            answer = await inbox.wait(
+                lambda message: (
+                    in_topic(message) and visible(message) == f"{marker} edited"
+                )
+            )
+            assert answer["reply_to_message"]["message_id"] == draft["message_id"]
 
             marker = "e2e-" + secrets.token_hex(6)
             await post(f"{mention} {marker} long")

@@ -67,7 +67,7 @@ class TelegramBotApi:
         payload: dict[str, object] = {
             "limit": 100,
             "timeout": _POLL_TIMEOUT_SECONDS,
-            "allowed_updates": ["message", "callback_query"],
+            "allowed_updates": ["message", "edited_message", "callback_query"],
         }
         if offset is not None:
             payload["offset"] = offset

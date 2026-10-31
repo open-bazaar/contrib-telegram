@@ -101,6 +101,7 @@ class _InboundUpdate:
     chat_id: int
     provider_message_id: int
     provider_time_s: int
+    edit_version: str | None
     topic_id: int
     topic_presentation: ChannelTargetPresentation | None
     content: _InboundContent
@@ -451,6 +452,10 @@ class TelegramChannel:
         if isinstance(message, Mapping):
             await self._handle_message(message, update_id=update_id)
             return
+        edited = update.get("edited_message")
+        if isinstance(edited, Mapping):
+            await self._handle_message(edited, update_id=update_id, edited=True)
+            return
         callback_query = update.get("callback_query")
         if isinstance(callback_query, Mapping):
             return
@@ -529,6 +534,7 @@ class TelegramChannel:
         *,
         bot_id: int,
         bot_username: str,
+        edited: bool,
     ) -> _InboundUpdate | str:
         """Read a message update, or name the reason it was filtered."""
 
@@ -544,7 +550,7 @@ class TelegramChannel:
             return "unsupported_chat_type"
         chat_id = chat.get("id")
         provider_message_id = message.get("message_id")
-        provider_time_s = message.get("date")
+        provider_time_s = message.get("edit_date" if edited else "date")
         topic_id = self._message_topic_id(message, fallback=0)
         if (
             not isinstance(chat_id, int)
@@ -582,6 +588,7 @@ class TelegramChannel:
             chat_id=chat_id,
             provider_message_id=provider_message_id,
             provider_time_s=provider_time_s,
+            edit_version=str(provider_time_s) if edited else None,
             topic_id=topic_id,
             topic_presentation=topic_presentation,
             content=content,
@@ -592,6 +599,7 @@ class TelegramChannel:
         message: Mapping[str, object],
         *,
         update_id: int,
+        edited: bool = False,
     ) -> None:
         bot_id = self._bot_id
         bot_username = self._bot_username or ""
@@ -599,7 +607,7 @@ class TelegramChannel:
             raise RuntimeError("Telegram bot identity is not initialized")
 
         update = await self._read_message(
-            message, bot_id=bot_id, bot_username=bot_username
+            message, bot_id=bot_id, bot_username=bot_username, edited=edited
         )
         if isinstance(update, str):
             await self._publish(
@@ -653,6 +661,7 @@ class TelegramChannel:
                 channel_session_id=channel_session_id,
                 provider_chat_id=str(identity.chat_id),
                 provider_message_id=str(update.provider_message_id),
+                edit_version=update.edit_version,
                 received_at_ms=received_at_ms,
                 sender=sender,
                 message_type=update.content.message_type,
