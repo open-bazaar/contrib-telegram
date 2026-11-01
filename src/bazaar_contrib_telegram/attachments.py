@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
-from collections.abc import AsyncGenerator, Mapping
+from collections.abc import Mapping
 from contextlib import aclosing
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +13,6 @@ from bazaar_contrib_channel import InboundAttachment, OutboundAttachment
 
 from .api import TelegramApiError, TelegramBotApi, TelegramTransportError
 
-_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024
 _MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _MAX_RICH_BLOCKS = 500
 _MAX_RICH_DEPTH = 16
@@ -32,7 +31,6 @@ class TelegramAttachmentSource:
     kind: str
     name: str
     media_type: str | None = None
-    file_size: int | None = None
     file_unique_id: str | None = None
 
     def __post_init__(self) -> None:
@@ -40,12 +38,6 @@ class TelegramAttachmentSource:
             raise ValueError(
                 "Telegram attachment source requires file_id, kind, and name"
             )
-        if self.file_size is not None and (
-            isinstance(self.file_size, bool)
-            or not isinstance(self.file_size, int)
-            or self.file_size < 0
-        ):
-            raise ValueError("Telegram attachment file_size must be non-negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,34 +135,16 @@ async def materialize_attachments(
 ) -> tuple[InboundAttachment, ...]:
     attachments: list[InboundAttachment] = []
     for source in sources:
-        if source.file_size is not None and source.file_size > _MAX_DOWNLOAD_BYTES:
-            attachments.append(
-                InboundAttachment(
-                    state="failed",
-                    name=source.name,
-                    kind=source.kind,
-                    media_type=source.media_type,
-                    error="telegram_file_too_large",
-                )
-            )
-            continue
         try:
             provider_file = await api.get_file(source.file_id)
             file_path = provider_file.get("file_path")
             if not isinstance(file_path, str) or not file_path:
                 raise ValueError("Telegram getFile omitted file_path")
-            provider_size = provider_file.get("file_size")
-            if (
-                isinstance(provider_size, int)
-                and not isinstance(provider_size, bool)
-                and provider_size > _MAX_DOWNLOAD_BYTES
-            ):
-                raise ValueError("Telegram file exceeds download limit")
             attachment = InboundAttachment(
                 name=source.name,
                 kind=source.kind,
                 media_type=source.media_type,
-                source=aclosing(_bounded_stream(api.download_file(file_path))),
+                source=aclosing(api.download_file(file_path)),
             )
         except (
             TelegramApiError,
@@ -247,18 +221,6 @@ def prepare_outbound_attachments(
             )
         )
     return tuple(prepared)
-
-
-async def _bounded_stream(source: AsyncGenerator[bytes]) -> AsyncGenerator[bytes]:
-    total = 0
-    async with aclosing(source):
-        async for chunk in source:
-            if not isinstance(chunk, bytes):
-                raise TypeError("Telegram file stream must yield bytes")
-            total += len(chunk)
-            if total > _MAX_DOWNLOAD_BYTES:
-                raise ValueError("Telegram file exceeds download limit")
-            yield chunk
 
 
 def _collect_rich_media(
@@ -395,16 +357,12 @@ def _source_from_file(
     media_type = value.get("mime_type")
     if not isinstance(media_type, str) or not media_type:
         media_type = default_media_type
-    file_size = value.get("file_size")
-    if not isinstance(file_size, int) or isinstance(file_size, bool) or file_size < 0:
-        file_size = None
     return TelegramAttachmentSource(
         file_id=file_id,
         file_unique_id=file_unique_id,
         kind=kind,
         name=name,
         media_type=media_type,
-        file_size=file_size,
     )
 
 

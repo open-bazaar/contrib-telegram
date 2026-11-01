@@ -208,6 +208,19 @@ typing action per thread for content, tool, usage and context compaction
 events. `bazaar-contrib-channel` moves to `~=0.3.0rc12`,
 and the tests install `bazaar-compute-node>=0.3.0rc12`.
 
+## Task 6: No download cap
+
+The Channel no longer caps inbound files at 20 MB, neither from the update's
+declared size, from `getFile`'s reported size, nor while streaming. The
+download streams to disk, and a file above what the Bot API serves fails in
+`getFile` with the platform's own error, recorded on the attachment as
+`telegram_attachment_failed:TelegramApiError`. The attachment source drops its
+unused `file_size`.
+
+BCN `0.3.0rc13` drops the node's own per-file limit as well, so the
+development and `e2e` requirements on `bazaar-compute-node` start there and
+the lock takes that release's packages.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
