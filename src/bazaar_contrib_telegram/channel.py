@@ -294,7 +294,7 @@ class TelegramChannel:
                 raise TypeError("Telegram inbound queue contained an invalid message")
             yield item
 
-    def accept_turn_event(self, item: HarnessOutput, *, target: ChannelTarget) -> None:
+    def show_typing(self, item: HarnessOutput, *, target: ChannelTarget) -> None:
         if (
             isinstance(
                 item.payload,
