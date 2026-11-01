@@ -175,7 +175,7 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
         "--refresh",
         "--default-index",
         "https://pypi.org/simple",
-        "bazaar-compute-node>=0.3.0rc11,<0.4",
+        "bazaar-compute-node>=0.3.0rc13,<0.4",
         "--with",
         str(provider),
         "--with",
