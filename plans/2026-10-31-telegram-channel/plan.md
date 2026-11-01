@@ -197,6 +197,17 @@ transport failure rather than invalid JSON.
 A request through a proxy that refuses connections fails with
 `ClientProxyConnectionError` and that error's message.
 
+## Task 5: Turn events
+
+BCN `0.3.0rc12` no longer calls `accept_turn_event` on a Channel. The agent
+publishes each turn event as `CHANNEL_TURN` on the private binding of the
+connection taking part in the turn, carrying the event and its target. The
+`channel` contrib listens to `CHANNEL_TURN` and hands the event to
+`show_typing`, the former `accept_turn_event` with its rules unchanged: one
+typing action per thread for content, tool, usage and context compaction
+events. `bazaar-contrib-channel` moves to `~=0.3.0rc12`,
+and the tests install `bazaar-compute-node>=0.3.0rc12`.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
@@ -214,3 +225,5 @@ Locally, an approved and a rejected card each answered the original sender,
 stopping the node with a third card pending cancelled its turn and closed the
 card without buttons, ending with `Action rejected: the approval request was
 cancelled`, and typing showed in the client.
+After Task 5, both `e2e` tests pass locally against BCN `0.3.0rc12` in about
+125 seconds, with every package in the lock at `0.3.0rc12`.

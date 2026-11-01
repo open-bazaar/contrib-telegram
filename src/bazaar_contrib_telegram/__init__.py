@@ -5,14 +5,16 @@ from __future__ import annotations
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from bazaar_contrib_audit import AUDIT
 from bazaar_contrib_channel import (
     CHANNEL,
     CHANNEL_BUILDERS,
     CHANNEL_INPUT,
+    CHANNEL_TURN,
     ChannelBuilderConfig,
+    ChannelTurn,
     channel_builder_key,
 )
 from bazaar_contrib_timer import TIMER
@@ -51,11 +53,18 @@ async def lifespan(ctx: Context, config: Config):
             await instance.stop(timeout=5)
 
 
+def turn(ctx: Context, value: ChannelTurn) -> None:
+    cast(TelegramOutboundChannel, ctx.accept(CHANNEL)).show_typing(
+        value.event, target=value.target
+    )
+
+
 channel = Contrib(
     config=Config,
     accepts=[CHANNEL_INPUT, TIMER, AUDIT],
     offers=[CHANNEL],
     lifespan=lifespan,
+    listen={CHANNEL_TURN: turn},
 )
 
 
