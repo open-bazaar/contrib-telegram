@@ -1,0 +1,5 @@
+"token_env.title" = "Bot token environment variable"
+"token_env.description" = "The name of an environment variable on the computer that holds the bot token; Bot token wins when both are set."
+"token.title" = "Bot token"
+"token.description" = "The token @BotFather gave the bot."
+"token.empty" = "Read from the environment variable"

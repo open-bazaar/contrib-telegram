@@ -175,7 +175,7 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
         "--refresh",
         "--default-index",
         "https://pypi.org/simple",
-        "bazaar-compute-node>=0.3.0rc13,<0.4",
+        "bazaar-compute-node>=0.3.0rc19,<0.4",
         "--with",
         str(provider),
         "--with",
@@ -296,8 +296,41 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
                 and message["chat"]["type"] == "private"
             )
 
+        async def connection(name: str, after: int = -1) -> tuple[int, dict[str, Any]]:
+            async with asyncio.timeout(WAIT_SECONDS):
+                while True:
+                    for index, event in enumerate(await journal(events)):
+                        if index > after and event["event_name"] == name:
+                            return index, event
+                    await asyncio.sleep(0.5)
+
         try:
             await start("config-filesystem")
+
+            _, connected = await connection("channel.connection.connected")
+            assert connected["context"]["connection"] == "telegram:0"
+            assert connected["payload"]["identity"]["id"] == str(tested_me["id"])
+            before = len(await journal(events))
+            async with asyncio.timeout(WAIT_SECONDS):
+                while True:
+                    # Another getUpdates for the same bot ends the node's long poll
+                    # with a conflict; the node's next poll ends this one in turn.
+                    await asyncio.gather(
+                        tested.call("getUpdates", timeout=10), return_exceptions=True
+                    )
+                    failures = [
+                        (index, event)
+                        for index, event in enumerate(await journal(events))
+                        if index >= before
+                        and event["event_name"] == "channel.connection.failed"
+                    ]
+                    if failures:
+                        failed_at, failed = failures[0]
+                        break
+            assert failed["context"]["connection"] == "telegram:0"
+            assert failed["payload"]["retry_in_ms"] > 0 and failed["error"]["kind"]
+            _, recovered = await connection("channel.connection.connected", failed_at)
+            assert recovered["context"]["connection"] == "telegram:0"
 
             marker = "e2e-" + secrets.token_hex(6)
             asked = await post(f"{mention} {marker} reply")
