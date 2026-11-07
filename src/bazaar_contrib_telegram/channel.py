@@ -15,6 +15,8 @@ from unicodedata import category
 import aiohttp
 from bazaar_contrib_audit import Audit, AuditContext, AuditError
 from bazaar_contrib_channel import (
+    ChannelConnected,
+    ChannelConnectionFailed,
     ChannelIdentity,
     ChannelInput,
     ChannelTarget,
@@ -200,8 +202,10 @@ class TelegramChannel:
                         raise
                     backoff = min(backoff * 2, _MAX_RECONNECT_DELAY_SECONDS)
                     await self._publish(
-                        "channel.identity.failed",
-                        {"retry_in_ms": math.ceil(delay * 1000)},
+                        ChannelConnectionFailed.event_name,
+                        ChannelConnectionFailed(
+                            retry_in_ms=math.ceil(delay * 1000)
+                        ).model_dump(mode="json"),
                         error=audit_error(error),
                     )
                 await self._timer.create(math.ceil(delay * 1000)).wait()
@@ -393,6 +397,10 @@ class TelegramChannel:
         retry_delay = 1.0
         failed = False
         self._ready.set()
+        await self._publish(
+            ChannelConnected.event_name,
+            ChannelConnected(identity=self.get_identity()).model_dump(mode="json"),
+        )
         while not self._stopping.is_set():
             try:
                 updates = await api.get_updates(offset=offset)
@@ -404,8 +412,10 @@ class TelegramChannel:
                 )
                 failed = True
                 await self._publish(
-                    "channel.poll.failed",
-                    {"retry_in_ms": math.ceil(delay * 1000)},
+                    ChannelConnectionFailed.event_name,
+                    ChannelConnectionFailed(
+                        retry_in_ms=math.ceil(delay * 1000)
+                    ).model_dump(mode="json"),
                     error=audit_error(error),
                 )
                 try:
@@ -419,7 +429,12 @@ class TelegramChannel:
             retry_delay = 1.0
             if failed:
                 failed = False
-                await self._publish("channel.poll.recovered", {})
+                await self._publish(
+                    ChannelConnected.event_name,
+                    ChannelConnected(identity=self.get_identity()).model_dump(
+                        mode="json"
+                    ),
+                )
             for update in updates:
                 update_id = update.get("update_id")
                 if (

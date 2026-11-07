@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from bazaar_contrib_audit import AUDIT, AUDIT_EVENT, AuditEvent, AuditFailure, audit
-from bazaar_contrib_channel import ChannelInput
+from bazaar_contrib_channel import ChannelConnectionFailed, ChannelInput
 from bazaar_contrib_timer import TIMER
 from bazaar_contrib_timer_wheel import timer_wheel
 from bazaar_core import Composition, Context, Contrib, ContribEntry, ContribHub
@@ -24,7 +24,7 @@ async def test_rejected_get_me_is_retried_within_the_startup_budget(tmp_path: Pa
     async def observe(ctx: Context, event: AuditEvent) -> None:
         if (
             isinstance(event, AuditFailure)
-            and event.event_name == "channel.identity.failed"
+            and event.event_name == ChannelConnectionFailed.event_name
         ):
             failures.append(event)
 

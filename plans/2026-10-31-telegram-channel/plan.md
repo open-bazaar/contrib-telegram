@@ -221,6 +221,30 @@ BCN `0.3.0rc13` drops the node's own per-file limit as well, so the
 development and `e2e` requirements on `bazaar-compute-node` start there and
 the lock takes that release's packages.
 
+## Task 7: Form words and connection events
+
+BCN stage 13 draws every channel's configuration form from the schema of its
+entity model and reports each connection's state from shared connection events,
+per messages `25fe9d74-6015-5615-b26a-1021b11d8792`, `7ce989b2-cd0f-577c-9648-97f4153dc2c5`
+and `beb133fa-5a23-56d3-b225-f18f5a665270`. The words of the form live in
+`resources/locales/en.toml` and `zh-CN.toml`, keyed by field: `<field>.title`,
+`<field>.description` and, for a field that can stay empty, `<field>.empty`.
+`Config` carries both under `x-locales` at the top of its schema; `token` is
+marked `writeOnly`.
+
+The Channel publishes `ChannelConnected` with the bot's identity when polling
+starts and when a poll succeeds after a failure, and `ChannelConnectionFailed`
+with the error and the delay before the next attempt when `getMe` or
+`getUpdates` fails. They replace `channel.identity.failed`,
+`channel.poll.failed` and `channel.poll.recovered`. The agent names the
+connection on them, so the Channel does not. `bazaar-contrib-channel` moves to
+`~=0.3.0rc19`, and the tests install `bazaar-compute-node>=0.3.0rc19`.
+
+10. Connection: the node reports itself connected as the bot under test on
+    `telegram:0`. Another `getUpdates` for the same bot ends the node's long
+    poll with a conflict; the node reports the failure with its retry delay,
+    then that it is connected again.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
