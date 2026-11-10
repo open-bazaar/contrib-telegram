@@ -10,7 +10,7 @@ import pytest
 from bazaar_contrib_audit import AUDIT, AUDIT_EVENT, AuditEvent, AuditFailure, audit
 from bazaar_contrib_channel import ChannelConnectionFailed, ChannelInput
 from bazaar_contrib_timer import TIMER
-from bazaar_contrib_timer_wheel import timer_wheel
+from bazaar_contrib_timer.wheel import timer_wheel
 from bazaar_core import Composition, Context, Contrib, ContribEntry, ContribHub
 
 from bazaar_contrib_telegram.api import TelegramApiError, TelegramTransportError
