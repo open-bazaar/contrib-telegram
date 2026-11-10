@@ -201,7 +201,6 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
                     {
                         "id": "telegram-test",
                         "name": "Telegram Test",
-                        "workspace": str(tmp_path / "workspace"),
                         "mode": "dangerous_individual",
                         "channel": [
                             {"kind": "telegram", "token_env": "TELEGRAM_TEST_BOT_TOKEN"}
