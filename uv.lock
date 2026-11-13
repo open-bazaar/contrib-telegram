@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.15"
 
 [options]
@@ -86,6 +86,15 @@ wheels = [
 ]
 
 [[package]]
+name = "aiosqlite"
+version = "0.22.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/8a/64761f4005f17809769d23e518d915db74e6310474e733e3593cfc854ef1/aiosqlite-0.22.1.tar.gz", hash = "sha256:043e0bd78d32888c0a9ca90fc788b38796843360c855a7262a532813133a0650", size = 14821, upload-time = "2025-12-23T19:25:43.997Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/b7/e3bf5133d697a08128598c8d0abc5e16377b51465a33756de24fa7dee953/aiosqlite-0.22.1-py3-none-any.whl", hash = "sha256:21c002eb13823fad740196c5a2e9d8e62f6243bd9e7e4a1f87fb5e44ecb4fceb", size = 17405, upload-time = "2025-12-23T19:25:42.139Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -166,6 +175,27 @@ wheels = [
 ]
 
 [[package]]
+name = "bazaar-contrib-collaboration"
+version = "0.3.0rc32"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bazaar-contrib-audit" },
+    { name = "bazaar-contrib-channel" },
+    { name = "bazaar-contrib-legacy-node-migrations" },
+    { name = "bazaar-contrib-messages" },
+    { name = "bazaar-contrib-schema" },
+    { name = "bazaar-contrib-sidecar" },
+    { name = "bazaar-contrib-storage" },
+    { name = "bazaar-contrib-timer" },
+    { name = "bazaar-core" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/12/81/cd69de022ca49b74fda20f7c619c8c77913a680fee74d5c0384bbb6f0975/bazaar_contrib_collaboration-0.3.0rc32.tar.gz", hash = "sha256:67b24d66e507aa8448b522f73a93bd7c9807d38b6a7859047c5e8f8320ea3025", size = 10721, upload-time = "2026-11-13T06:55:55.443Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/65/16/3f39b56ee8d4e0b2e7367f7080db440347a86bce642ba9677b3e11196d0f/bazaar_contrib_collaboration-0.3.0rc32-py3-none-any.whl", hash = "sha256:c350f5a95da6e201cd8712a34dd6ffbcdafc4aeb144693de5840e379ff3c3efa", size = 13881, upload-time = "2026-11-13T06:55:54.344Z" },
+]
+
+[[package]]
 name = "bazaar-contrib-config"
 version = "0.3.0rc26"
 source = { registry = "https://pypi.org/simple" }
@@ -218,6 +248,20 @@ wheels = [
 ]
 
 [[package]]
+name = "bazaar-contrib-legacy-node-migrations"
+version = "0.3.0rc15"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bazaar-contrib-schema" },
+    { name = "bazaar-contrib-storage" },
+    { name = "bazaar-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/14/d217a0541073dd5d9d44b7f6d91762a6312a55f93b46fe7348f975dcc5c5/bazaar_contrib_legacy_node_migrations-0.3.0rc15.tar.gz", hash = "sha256:f1151f4073181ee31b737e179165529cb2c6ae4de38120692715a4614d3db854", size = 18977, upload-time = "2026-11-02T10:22:57.616Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/aa/84bfa66f987855b0cb5c7c597ebe63c9f5b753cccbbac07297d4c908848a/bazaar_contrib_legacy_node_migrations-0.3.0rc15-py3-none-any.whl", hash = "sha256:86de8dbc218118b83c3b2a5e570ebb9a02b9731766ff74eaf17a481a4a92915e", size = 21141, upload-time = "2026-11-02T10:22:56.745Z" },
+]
+
+[[package]]
 name = "bazaar-contrib-manager"
 version = "0.3.0rc26"
 source = { registry = "https://pypi.org/simple" }
@@ -234,6 +278,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d5/46/6e4e2905c62415fce5eabe72f8ddab1095fd60644a7f46e6d58c0c7d157b/bazaar_contrib_manager-0.3.0rc26.tar.gz", hash = "sha256:cc07c16b44e6ee92be204dee6c093b7d6efb466f8a5a7664a3cadebcccf1f12d", size = 45519, upload-time = "2026-11-10T09:29:09.829Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/02/96/ab0d8299c9e46323cbfe3ee385b469fe5893db7e83b9ffd1d68e81f6dbbd/bazaar_contrib_manager-0.3.0rc26-py3-none-any.whl", hash = "sha256:a0aea4fd269ecf79121f09730880315a3a773c85d2e2c040813d0da3d094b857", size = 30746, upload-time = "2026-11-10T09:29:08.811Z" },
+]
+
+[[package]]
+name = "bazaar-contrib-messages"
+version = "0.3.0rc32"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bazaar-contrib-audit" },
+    { name = "bazaar-contrib-channel" },
+    { name = "bazaar-contrib-legacy-node-migrations" },
+    { name = "bazaar-contrib-schema" },
+    { name = "bazaar-contrib-sidecar" },
+    { name = "bazaar-contrib-storage" },
+    { name = "bazaar-contrib-timer" },
+    { name = "bazaar-core" },
+    { name = "jinja2" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/62/d0bdd8cf3b54400e339d46cb75adbfd035b71b61e27d07ba54def9743e83/bazaar_contrib_messages-0.3.0rc32.tar.gz", hash = "sha256:962f4cbbb4c780a3409dbdd861d3c7e0932b3892990e14d3297a12505248ca07", size = 64753, upload-time = "2026-11-13T06:55:43.955Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/32/e1d0ae943f317b533c2f8c46418eed4fd734a39697832e4836cae8c08868/bazaar_contrib_messages-0.3.0rc32-py3-none-any.whl", hash = "sha256:8d74ebd21d548f6e81e04b920c40750eb3287817f036b2686cbdf5efa9c9fc1c", size = 78952, upload-time = "2026-11-13T06:55:42.938Z" },
 ]
 
 [[package]]
@@ -256,6 +321,21 @@ wheels = [
 ]
 
 [[package]]
+name = "bazaar-contrib-schema"
+version = "0.3.0rc32"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bazaar-contrib-storage" },
+    { name = "bazaar-core" },
+    { name = "packaging" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/aa/7e/3bee48972fff12fd193f4eba7543725b515b5c791be0affb94328272873e/bazaar_contrib_schema-0.3.0rc32.tar.gz", hash = "sha256:3bfa0a99e6fd812be5cf40c1b08c7e789ecc2e6a8182369c544cb1dafba56fa5", size = 9452, upload-time = "2026-11-13T06:55:32.403Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/37/061a5569b56d9fbdb1f80975c045e9544104b832ae6566d3329e122790b7/bazaar_contrib_schema-0.3.0rc32-py3-none-any.whl", hash = "sha256:887c5175b804762f6804c4230beda3c6d91c95fd59275abdb09186bcaf10b52f", size = 10633, upload-time = "2026-11-13T06:55:31.51Z" },
+]
+
+[[package]]
 name = "bazaar-contrib-sidecar"
 version = "0.3.0rc26"
 source = { registry = "https://pypi.org/simple" }
@@ -269,6 +349,36 @@ wheels = [
 ]
 
 [[package]]
+name = "bazaar-contrib-sqlite"
+version = "0.3.0rc10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiosqlite" },
+    { name = "bazaar-contrib-storage" },
+    { name = "bazaar-contrib-timer" },
+    { name = "bazaar-core" },
+    { name = "jinja2" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b6/31/4694b42f01b297f75ea6fb51ff3ef5fbb0472b960f3d4266bc2b9db8bbc6/bazaar_contrib_sqlite-0.3.0rc10.tar.gz", hash = "sha256:f74b24078987cbaae358b1feec2c6829aa99846cec4879f675b5d2aa29fc5c36", size = 17873, upload-time = "2026-10-29T17:42:04.654Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/aa/ad9900557a1ee3eda8948040a6fe105f68f7a259833fcb251c61874ea334/bazaar_contrib_sqlite-0.3.0rc10-py3-none-any.whl", hash = "sha256:6967022423e2a38fb38444f4106f65ab0dceaaa31a2b52ed340d1206890cb02f", size = 26435, upload-time = "2026-10-29T17:42:03.834Z" },
+]
+
+[[package]]
+name = "bazaar-contrib-storage"
+version = "0.3.0rc32"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bazaar-core" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/f8/38b8b6ccca171c234bc5057d5d0411a9b537ec744a18221f3b1df8cecb14/bazaar_contrib_storage-0.3.0rc32.tar.gz", hash = "sha256:a0d3df5aeb295f96865fcd19a644ea11f702b973c0a6c8dd9f384ecf5d12a1e4", size = 9875, upload-time = "2026-11-13T06:55:26.882Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/5b/100ccde0a0502ce8580cd09369ac08bd92bbc847959f9d54cc2a74f013b8/bazaar_contrib_storage-0.3.0rc32-py3-none-any.whl", hash = "sha256:6fd1992fec72d2fdd4176a07e663d097b066c7fb3d1b7ecbbba04bd079b41428", size = 11794, upload-time = "2026-11-13T06:55:26.012Z" },
+]
+
+[[package]]
 name = "bazaar-contrib-telegram"
 version = "0.3.0rc5"
 source = { editable = "." }
@@ -276,7 +386,9 @@ dependencies = [
     { name = "aiohttp" },
     { name = "bazaar-contrib-audit" },
     { name = "bazaar-contrib-channel" },
+    { name = "bazaar-contrib-collaboration" },
     { name = "bazaar-contrib-harness" },
+    { name = "bazaar-contrib-messages" },
     { name = "bazaar-contrib-timer" },
     { name = "bazaar-core" },
     { name = "pydantic" },
@@ -285,6 +397,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "bazaar-compute-node" },
+    { name = "bazaar-contrib-sqlite" },
     { name = "bazaar-contrib-timer" },
     { name = "bcn-telegram-test-harness" },
     { name = "blockbuster" },
@@ -300,7 +413,9 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.0" },
     { name = "bazaar-contrib-audit", specifier = "~=0.3.0rc10" },
     { name = "bazaar-contrib-channel", specifier = "~=0.3.0rc19" },
+    { name = "bazaar-contrib-collaboration", specifier = "~=0.3.0rc10" },
     { name = "bazaar-contrib-harness", specifier = "~=0.3.0rc10" },
+    { name = "bazaar-contrib-messages", specifier = "~=0.3.0rc10" },
     { name = "bazaar-contrib-timer", specifier = "~=0.3.0rc10" },
     { name = "bazaar-core", specifier = "~=0.3.0rc10" },
     { name = "pydantic", specifier = ">=2.12.0" },
@@ -309,6 +424,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "bazaar-compute-node", specifier = ">=0.3.0rc26,<0.4" },
+    { name = "bazaar-contrib-sqlite", specifier = ">=0.3.0rc10,<0.4" },
     { name = "bazaar-contrib-timer", specifier = ">=0.3.0rc26,<0.4" },
     { name = "bcn-telegram-test-harness", editable = "tests/fixtures/harness" },
     { name = "blockbuster", specifier = ">=1.5.29,<1.6" },

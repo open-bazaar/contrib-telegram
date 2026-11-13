@@ -14,6 +14,7 @@ from typing import Literal
 from bazaar_contrib_audit import Audit, AuditError
 from bazaar_contrib_channel import ChannelApprovalRequest, ChannelInput
 from bazaar_contrib_harness import ApprovalResult
+from bazaar_contrib_messages import Messages
 from bazaar_contrib_timer import Timer, wait_for
 
 from .api import TelegramApiError, TelegramTransportError
@@ -74,11 +75,12 @@ class TelegramApprovalChannel(TelegramChannel):
         input: ChannelInput,
         timer: Timer,
         audit: Audit,
+        messages: Messages,
         group: asyncio.TaskGroup,
         *,
         token: str,
     ) -> None:
-        super().__init__(input, timer, audit, group, token=token)
+        super().__init__(input, timer, audit, messages, group, token=token)
         self._pending_approvals: dict[str, _PendingApproval] = {}
         self._approval_tokens_by_request: dict[str, str] = {}
         self._resolved_approval_tokens: dict[str, str] = {}
@@ -508,7 +510,7 @@ class TelegramApprovalChannel(TelegramChannel):
 
     @staticmethod
     def _provider_message_id(value: str | None) -> int | None:
-        if value is None:
+        if value is None or value.startswith("group:"):
             return None
         try:
             message_id = int(value)

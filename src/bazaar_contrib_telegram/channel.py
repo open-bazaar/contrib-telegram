@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from time import time_ns
 from typing import Literal
 from unicodedata import category
+from uuid import NAMESPACE_URL, uuid5
 
 import aiohttp
 from bazaar_contrib_audit import Audit, AuditContext, AuditError
@@ -27,6 +28,7 @@ from bazaar_contrib_channel import (
     InboundMessage,
     SenderIdentity,
 )
+from bazaar_contrib_collaboration import ContactReviewed
 from bazaar_contrib_harness import (
     ContentDelta,
     ContextCompactionCompleted,
@@ -40,6 +42,8 @@ from bazaar_contrib_harness import (
     ToolCallTextDelta,
     UsageUpdated,
 )
+from bazaar_contrib_messages import Agent, Messages
+from bazaar_contrib_messages.states import Review
 from bazaar_contrib_timer import Timer, wait_for
 from pydantic import JsonValue
 
@@ -115,6 +119,7 @@ class TelegramChannel:
         input: ChannelInput,
         timer: Timer,
         audit: Audit,
+        messages: Messages,
         group: asyncio.TaskGroup,
         *,
         token: str,
@@ -122,6 +127,7 @@ class TelegramChannel:
         self._input = input
         self._timer = timer
         self._audit = audit
+        self._messages = messages
         self._group = group
         self._token = token
         self._started_at_s = time_ns() // 1_000_000_000
@@ -136,6 +142,9 @@ class TelegramChannel:
         self._bot_first_name: str | None = None
         self._typing_tasks: dict[str, asyncio.Task[None]] = {}
         self._topic_display_names: dict[tuple[int, int], str] = {}
+        self._reviews: dict[int | str, Review] = {}
+        self._group_threads: dict[str, int | str] = {}
+        self._group_messages: set[int | str] = set()
 
     @property
     def name(self) -> str:
@@ -173,6 +182,13 @@ class TelegramChannel:
             ),
         )
 
+    def forget_review(self, event: ContactReviewed) -> None:
+        if event.agent.id != self._input.agent_id:
+            return
+        chat_id = self._group_threads.pop(event.thread.id, None)
+        if chat_id is not None:
+            self._reviews.pop(chat_id, None)
+
     async def start(self, *, timeout: float) -> None:
         if self._runner is not None:
             return
@@ -183,6 +199,9 @@ class TelegramChannel:
         self._stopping.clear()
         self._ready.clear()
         self._topic_display_names.clear()
+        self._reviews.clear()
+        self._group_threads.clear()
+        self._group_messages.clear()
         session = aiohttp.ClientSession()
         api = TelegramBotApi(session, token=self._token)
         self._session = session
@@ -655,6 +674,16 @@ class TelegramChannel:
         )
         reply = message.get("reply_to_message")
 
+        approved = False
+        if target_kind == "group" and identity.topic_id != 0:
+            main = TelegramThreadIdentity(
+                bot_id=bot_id, chat_id=update.chat_id, topic_id=0
+            )
+            review = await self._group_review(main)
+            if review is None:
+                await self._group_message(main, update.chat, sender)
+            approved = review is Review.APPROVED
+
         received_at_ms = time_ns() // 1_000_000
         reference: str | None = None
         if isinstance(reply, Mapping):
@@ -666,6 +695,7 @@ class TelegramChannel:
                 presentation=presentation,
                 chat_type=update.chat_type,
                 received_at_ms=received_at_ms,
+                approved=approved,
             )
 
         channel_session_id = identity.channel_session_id
@@ -692,6 +722,7 @@ class TelegramChannel:
                 attachments=update.content.attachments,
                 occurred_at_ms=update.provider_time_s * 1_000,
                 metadata={
+                    **({"review": "approved"} if approved else {}),
                     "provider_reply_to_message_id": reference,
                     "telegram_update_id": update_id,
                     "telegram_chat_id": update.chat_id,
@@ -706,6 +737,62 @@ class TelegramChannel:
             )
         )
 
+    async def _group_review(self, main: TelegramThreadIdentity) -> Review | None:
+        review = self._reviews.get(main.chat_id)
+        if review is not None:
+            return review
+        session = await self._messages.storage(
+            Agent(self._input.agent_id)
+        ).get_channel_session(
+            self._stored_id("channel-session", main.channel_session_id)
+        )
+        if session is None:
+            return None
+        self._reviews[main.chat_id] = session.review
+        self._group_threads[self._stored_id("bcn-session", main.session_id)] = (
+            main.chat_id
+        )
+        return session.review
+
+    def _stored_id(self, kind: str, channel_id: str) -> str:
+        return str(
+            uuid5(NAMESPACE_URL, f"bcn:{self._input.agent_id}:{kind}:{channel_id}")
+        )
+
+    async def _group_message(
+        self,
+        main: TelegramThreadIdentity,
+        chat: Mapping[str, object],
+        sender: SenderIdentity,
+    ) -> None:
+        if main.chat_id in self._group_messages:
+            return
+        self._group_messages.add(main.chat_id)
+        presentation = self._presentation(
+            chat, target_kind="group", topic_id=0, topic_presentation=None
+        )
+        await self._inbound.put(
+            InboundMessage(
+                id=str(uuid5(NAMESPACE_URL, f"{main.provider_thread_id}:group")),
+                thread_id=main.session_id,
+                channel_session_id=main.channel_session_id,
+                provider_chat_id=str(main.chat_id),
+                provider_message_id=f"group:{main.chat_id}",
+                received_at_ms=time_ns() // 1_000_000,
+                sender=sender,
+                target=ChannelTarget(kind="group", thread_id=main.provider_thread_id),
+                body=(
+                    presentation.display_name
+                    if presentation is not None and presentation.display_name
+                    else str(main.chat_id)
+                ),
+                target_presentation=presentation,
+                mentions_agent=True,
+                notifies_runtime=True,
+                metadata={"telegram_event_type": "group", "sender_kind": sender.kind},
+            )
+        )
+
     async def _queue_reply_backfill(
         self,
         reply: Mapping[str, object],
@@ -716,6 +803,7 @@ class TelegramChannel:
         presentation: ChannelTargetPresentation | None,
         chat_type: str,
         received_at_ms: int,
+        approved: bool,
     ) -> str | None:
         reply_chat = reply.get("chat")
         if (
@@ -778,6 +866,7 @@ class TelegramChannel:
                 attachments=content.attachments,
                 occurred_at_ms=provider_time_ms,
                 metadata={
+                    **({"review": "approved"} if approved else {}),
                     "telegram_update_id": update_id,
                     "telegram_chat_id": identity.chat_id,
                     "telegram_message_thread_id": identity.topic_id,

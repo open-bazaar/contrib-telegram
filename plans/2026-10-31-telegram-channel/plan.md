@@ -245,6 +245,35 @@ connection on them, so the Channel does not. `bazaar-contrib-channel` moves to
     poll with a conflict; the node reports the failure with its retry delay,
     then that it is connected again.
 
+## Task 8: Topics inherit group review
+
+Per message `18ca5aa2-ac0f-5c1e-b316-3690d1efb056`, use the same rule as
+WeCom posts and Lark topics: a new Telegram group topic opens approved when
+its group's main conversation is approved. Read that conversation through
+`MESSAGES`, using the existing agent-scoped channel-session identity. Cache
+the review for the connection's lifetime and discard it on that agent's
+`CONTACT_REVIEWED` event for the main conversation.
+
+The main conversation keeps topic id `0`; topic and message identities keep
+their current values. If the first inbound message belongs to a topic and
+the group has no main conversation, queue one group message before the topic,
+as Lark does for topic-only groups. Its reserved provider message id is
+`group:<chat_id>`, so replies to it go to the group without a Telegram reply
+reference. The [Bot API](https://core.telegram.org/bots/api#sendmessage)
+addresses a topic with `message_thread_id` and a group with `chat_id` alone.
+Topic messages and their quoted backfill carry the inherited review together,
+so a quote cannot open an approved group's new topic as pending.
+
+Declare the messages and collaboration interface dependencies in this plugin.
+Validate review changes and agent/group isolation with real temporary SQLite
+storage. Run the installed-node e2e with both openings: the first topic
+creates a main conversation for review; approving the main group before the
+first topic lets its first quoted message be answered without a topic approval.
+
+Local validation for Task 8: eight tests pass, including independent wheel
+and sdist installs and real SQLite review changes. Ruff, formatting, Pyright
+CLI and the repository-root language-server check pass.
+
 ## Local validation
 
 Ruff and format checks, Pyright CLI and the language-server check pass.
