@@ -111,7 +111,8 @@ async def journal(path: Path) -> list[dict[str, Any]]:
 
 
 @pytest.mark.e2e
-async def test_installed_node_over_real_telegram(tmp_path: Path):
+@pytest.mark.parametrize("opening", ["topic", "group"])
+async def test_installed_node_over_real_telegram(tmp_path: Path, opening: str):
     tested_token = os.environ["TELEGRAM_TEST_BOT_TOKEN"]
     driver_token = os.environ["TELEGRAM_DRIVER_BOT_TOKEN"]
     chat = int(os.environ["TELEGRAM_TEST_CHAT_ID"])
@@ -239,9 +240,13 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
         topic_thread = TelegramThreadIdentity(
             bot_id=tested_me["id"], chat_id=chat, topic_id=topic
         ).provider_thread_id
+        group_thread = TelegramThreadIdentity(
+            bot_id=tested_me["id"], chat_id=chat, topic_id=0
+        ).provider_thread_id
         inbox = Inbox(driver)
         await inbox.skip_backlog()
         sent: list[tuple[int, int]] = []
+        authored: list[int] = []
         running: list[asyncio.subprocess.Process] = []
 
         async def start(configer: str) -> None:
@@ -332,28 +337,52 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
             assert recovered["context"]["connection"] == "telegram:0"
 
             marker = "e2e-" + secrets.token_hex(6)
-            asked = await post(f"{mention} {marker} reply")
+            if opening == "group":
+                asked = await driver.call(
+                    "sendMessage", chat_id=chat, text=f"{mention} {marker} reply"
+                )
+                sent.append((chat, asked["message_id"]))
+            else:
+                asked = await post(f"{mention} {marker} reply")
+            target = group_thread if opening == "group" else topic_thread
             async with asyncio.timeout(WAIT_SECONDS):
                 while True:
                     threads = [
                         event["context"]["thread_id"]
                         for event in await journal(events)
                         if event["event_name"] == "channel.received"
-                        and event["payload"]["target"]["thread_id"] == topic_thread
+                        and event["payload"]["target"]["thread_id"] == target
                     ]
                     if threads:
                         break
                     await asyncio.sleep(0.5)
+            if opening == "topic":
+                assert any(
+                    event["event_name"] == "channel.received"
+                    and event["payload"]["target"]["thread_id"] == group_thread
+                    for event in await journal(events)
+                )
             await execute("review", *node, "agent", "review", "approve", threads[0])
             answer = await inbox.wait(
                 lambda message: (
-                    in_topic(message) and visible(message) == f"{marker} reply"
+                    message["from"]["id"] == tested_me["id"]
+                    and message["chat"]["id"] == chat
+                    and visible(message) == f"{marker} reply"
                 )
             )
             assert answer["reply_to_message"]["message_id"] == asked["message_id"]
 
             marker = "e2e-" + secrets.token_hex(6)
-            original = await post(f"{marker} original")
+            if opening == "group":
+                original = await tested.call(
+                    "sendMessage",
+                    chat_id=chat,
+                    message_thread_id=topic,
+                    text=f"{marker} original",
+                )
+                authored.append(original["message_id"])
+            else:
+                original = await post(f"{marker} original")
             await post(f"{mention} {marker} quote", reply=original["message_id"])
             await inbox.wait(
                 lambda message: (
@@ -458,6 +487,7 @@ async def test_installed_node_over_real_telegram(tmp_path: Path):
                     "deleteMessages", chat_id=chat_id, message_ids=message_ids
                 )
             delivered: dict[int | str, list[int]] = defaultdict(list)
+            delivered[chat].extend(authored)
             for event in await journal(events):
                 if event["event_name"] == "channel.outbound.sent":
                     for part in event["payload"]["metadata"]["parts"]:

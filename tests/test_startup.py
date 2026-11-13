@@ -7,18 +7,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
-from bazaar_contrib_audit import AUDIT, AUDIT_EVENT, AuditEvent, AuditFailure, audit
+from bazaar_contrib_audit import AUDIT, AUDIT_EVENT, AuditEvent, AuditFailure
 from bazaar_contrib_channel import ChannelConnectionFailed, ChannelInput
+from bazaar_contrib_messages import MESSAGES
 from bazaar_contrib_timer import TIMER
-from bazaar_contrib_timer.wheel import timer_wheel
-from bazaar_core import Composition, Context, Contrib, ContribEntry, ContribHub
+from bazaar_core import Composition, Context, Contrib, ContribEntry
 
 from bazaar_contrib_telegram.api import TelegramApiError, TelegramTransportError
 from bazaar_contrib_telegram.channel import TelegramChannel
 
 
 @pytest.mark.e2e
-async def test_rejected_get_me_is_retried_within_the_startup_budget(tmp_path: Path):
+async def test_rejected_get_me_is_retried_within_the_startup_budget(
+    tmp_path: Path, services: Context
+):
     failures: list[AuditFailure] = []
 
     async def observe(ctx: Context, event: AuditEvent) -> None:
@@ -39,6 +41,7 @@ async def test_rejected_get_me_is_retried_within_the_startup_budget(tmp_path: Pa
                 ),
                 ctx.accept(TIMER),
                 ctx.accept(AUDIT),
+                ctx.accept(MESSAGES),
                 group,
                 token="0:invalid",
             )
@@ -48,18 +51,16 @@ async def test_rejected_get_me_is_retried_within_the_startup_budget(tmp_path: Pa
 
     composition = Composition(
         entries=(
-            ContribEntry(name="timer-wheel", definition=timer_wheel),
-            ContribEntry(name="audit", definition=audit),
             ContribEntry(
                 name="observer", definition=Contrib(listen={AUDIT_EVENT: observe})
             ),
             ContribEntry(
                 name="start",
-                definition=Contrib(accepts=[TIMER, AUDIT], lifespan=start),
+                definition=Contrib(accepts=[TIMER, AUDIT, MESSAGES], lifespan=start),
             ),
         )
     )
-    async with ContribHub() as hub, hub.enable(composition):
+    async with services.enable(composition):
         pass
     assert failures
     assert failures[0].payload == {"retry_in_ms": 1000}

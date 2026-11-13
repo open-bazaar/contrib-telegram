@@ -20,6 +20,8 @@ from bazaar_contrib_channel import (
     ChannelTurn,
     channel_builder_key,
 )
+from bazaar_contrib_collaboration import CONTACT_REVIEWED, ContactReviewed
+from bazaar_contrib_messages import MESSAGES
 from bazaar_contrib_timer import TIMER
 from bazaar_core import Context, Contrib
 from pydantic import BaseModel, ConfigDict, Field
@@ -55,6 +57,7 @@ async def lifespan(ctx: Context, config: Config):
             ctx.accept(CHANNEL_INPUT),
             ctx.accept(TIMER),
             ctx.accept(AUDIT),
+            ctx.accept(MESSAGES),
             group,
             token=token,
         )
@@ -72,12 +75,16 @@ def turn(ctx: Context, value: ChannelTurn) -> None:
     )
 
 
+def reviewed(ctx: Context, event: ContactReviewed) -> None:
+    cast(TelegramOutboundChannel, ctx.accept(CHANNEL)).forget_review(event)
+
+
 channel = Contrib(
     config=Config,
-    accepts=[CHANNEL_INPUT, TIMER, AUDIT],
+    accepts=[CHANNEL_INPUT, TIMER, AUDIT, MESSAGES],
     offers=[CHANNEL],
     lifespan=lifespan,
-    listen={CHANNEL_TURN: turn},
+    listen={CHANNEL_TURN: turn, CONTACT_REVIEWED: reviewed},
 )
 
 
