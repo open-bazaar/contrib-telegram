@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import tomllib
 from contextlib import asynccontextmanager
@@ -17,6 +18,7 @@ from bazaar_contrib_channel import (
     CHANNEL_INPUT,
     CHANNEL_TURN,
     ChannelBuilderConfig,
+    ChannelTarget,
     ChannelTurn,
     channel_builder_key,
 )
@@ -26,6 +28,7 @@ from bazaar_contrib_timer import TIMER
 from bazaar_core import Context, Contrib
 from pydantic import BaseModel, ConfigDict, Field
 
+from .identity import parse_provider_thread_id
 from .outbound import TelegramOutboundChannel
 
 _LOCALES = Path(str(files(__name__))) / "resources" / "locales"
@@ -92,6 +95,17 @@ class BuilderConfig(ChannelBuilderConfig):
     kind: ClassVar[str] = "telegram"
     entity_model: ClassVar[type[BaseModel]] = Config
     entry: ClassVar[Contrib[Any]] = channel
+
+    @classmethod
+    def conversation_key(
+        cls, target: ChannelTarget, configs: tuple[dict[str, Any], ...] = ()
+    ) -> str | None:
+        if target.kind != "group":
+            return None
+        address = parse_provider_thread_id(target.thread_id)
+        if isinstance(address.chat_id, str):
+            return None
+        return json.dumps((address.chat_id, address.topic_id))
 
 
 @asynccontextmanager
